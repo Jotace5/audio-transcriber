@@ -8,19 +8,22 @@ title Audio Transcriber
 python --version >nul 2>&1
 if %errorlevel% equ 0 goto python_ok
 
-echo [!] Python is not installed. Attempting to install with winget...
+echo ============================================
+echo   Python is not installed
+echo ============================================
 echo.
-winget install Python.Python.3.13 >nul 2>&1
-if %errorlevel% equ 0 (
-    echo [OK] Python installed. Close this window and run RUN.bat again.
-    echo.
-    pause
-    exit /b 0
-)
-
-echo [ERROR] Could not install Python automatically.
-echo         Download it from: https://www.python.org/downloads/
-echo         IMPORTANT: Check "Add Python to PATH" when installing.
+echo   To use this app you need to install Python first.
+echo.
+echo   Steps:
+echo     1. A download page will open in your browser.
+echo     2. Click the big yellow "Download Python" button.
+echo     3. Run the installer.
+echo     4. IMPORTANT: Check the box that says "Add python.exe to PATH"
+echo     5. Click "Install Now" and wait for it to finish.
+echo     6. Close this window and run RUN.bat again.
+echo.
+echo   Opening download page...
+start https://www.python.org/downloads/
 echo.
 pause
 exit /b 1
@@ -101,7 +104,7 @@ echo   [2] Exit
 echo.
 set /p OPTION="Choose an option (1/2): "
 
-if "!OPTION!"=="2" goto exit
+if "!OPTION!"=="2" goto exit_app
 if "!OPTION!"=="1" goto transcribe
 goto menu
 
@@ -130,7 +133,7 @@ goto menu
 :: ============================================
 :: 6. Exit
 :: ============================================
-:exit
+:exit_app
 echo.
 echo Closing app...
 timeout /t 2 >nul
