@@ -7,21 +7,19 @@ Uso:
   3. Los textos transcriptos van a aparecer en "output/"
 
 Requisitos:
-  pip install openai noisereduce pydub imageio-ffmpeg numpy pyaudioop
+  pip install openai noisereduce imageio-ffmpeg soundfile numpy
 """
 
 import os
 import sys
+import subprocess
 from pathlib import Path
 
 import numpy as np
+import soundfile as sf
 import noisereduce as nr
 import imageio_ffmpeg
-from pydub import AudioSegment
 from openai import OpenAI
-
-# Configurar pydub para usar el ffmpeg que viene con imageio-ffmpeg
-AudioSegment.converter = imageio_ffmpeg.get_ffmpeg_exe()
 
 # --- Configuración ---
 LANGUAGE = "es"  # Cambiar a "en" para inglés
@@ -29,6 +27,7 @@ INPUT_DIR = Path("input")
 OUTPUT_DIR = Path("output")
 CLEANED_DIR = Path("cleaned")
 MAX_FILE_SIZE_MB = 25
+FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
 
 
 def setup_dirs():
@@ -80,36 +79,42 @@ def ask_noise_reduction(files):
     return result
 
 
+def audio_to_wav(filepath):
+    """
+    Convierte cualquier formato de audio a WAV mono 16kHz usando ffmpeg.
+    Retorna el path al WAV temporal.
+    """
+    tmp_wav = CLEANED_DIR / f"{filepath.stem}_tmp.wav"
+    subprocess.run(
+        [FFMPEG_PATH, "-y", "-i", str(filepath), "-ar", "16000", "-ac", "1", str(tmp_wav)],
+        capture_output=True,
+    )
+    return tmp_wav
+
+
 def reduce_noise(filepath):
     """
-    Aplica reducción de ruido usando pydub + noisereduce.
+    Aplica reducción de ruido.
     Retorna el path al archivo limpio.
     """
     cleaned_path = CLEANED_DIR / f"{filepath.stem}_clean.wav"
 
-    # pydub lee cualquier formato (mp3, m4a, ogg, wav, etc.)
-    audio = AudioSegment.from_file(str(filepath))
+    # Convertir a WAV primero (funciona con cualquier formato)
+    tmp_wav = audio_to_wav(filepath)
 
-    # Convertir a mono, 16kHz para procesamiento
-    audio = audio.set_channels(1).set_frame_rate(16000)
+    # Leer WAV con soundfile
+    data, sample_rate = sf.read(tmp_wav)
+    tmp_wav.unlink()  # Borrar temporal
 
-    # Convertir a numpy array
-    samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
-    samples = samples / (2**15)  # Normalizar a [-1, 1] (16-bit audio)
+    # Convertir a mono si es estéreo
+    if data.ndim > 1:
+        data = np.mean(data, axis=1)
 
     # Aplicar reducción de ruido
-    cleaned = nr.reduce_noise(y=samples, sr=16000)
+    cleaned = nr.reduce_noise(y=data, sr=sample_rate)
 
-    # Guardar como WAV via pydub
-    cleaned_int16 = np.int16(cleaned * (2**15))
-    cleaned_audio = AudioSegment(
-        data=cleaned_int16.tobytes(),
-        sample_width=2,  # 16-bit
-        frame_rate=16000,
-        channels=1,
-    )
-    cleaned_audio.export(str(cleaned_path), format="wav")
-
+    # Guardar como WAV
+    sf.write(str(cleaned_path), cleaned, sample_rate)
     return cleaned_path
 
 

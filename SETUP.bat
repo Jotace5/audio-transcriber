@@ -27,7 +27,7 @@ echo.
 :: Instalar dependencias (incluye ffmpeg embebido, no hace falta instalarlo aparte)
 echo [...] Instalando dependencias...
 echo.
-pip install openai noisereduce pydub imageio-ffmpeg numpy audioop-lts
+pip install openai noisereduce imageio-ffmpeg soundfile numpy
 echo.
 
 if %errorlevel% neq 0 (
